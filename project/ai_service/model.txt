@@ -1,0 +1,67 @@
+from sqlalchemy import (
+    Column, String, Integer, Text, DateTime, ForeignKey, CheckConstraint, Boolean, UniqueConstraint
+)
+from sqlalchemy.orm import relationship
+from db import Base
+
+
+class Lecturer(Base):
+    __tablename__ = 'lecturers'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(40), nullable=False)
+
+    courses = relationship('Course', back_populates='lecturer')
+
+    __table_args__ = (
+        CheckConstraint(
+            "name ~ '^[A-Za-z]{2,}(?:[ ''-][A-Za-z]{2,})+$'",
+            name="ck_lecturer_name_min2words_min2letters"),
+    )
+
+
+class Room(Base):
+    __tablename__ = 'rooms'
+
+    id = Column(Integer, primary_key=True)
+    building = Column(Integer, nullable=False)
+    number = Column(Integer, nullable=False)
+    capacity = Column(Integer, nullable=False)
+
+    lessons = relationship('Lesson', back_populates='room')
+
+    __table_args__ = (
+        CheckConstraint(
+            "capacity >= 0", name='chk_room_capacity_min_0'),
+        CheckConstraint(
+            "capacity >= 0", name='chk_room_building_min_0'),
+        UniqueConstraint('building', 'number', name='uq_number_per_building'),
+    )
+
+
+class Course(Base):
+    __tablename__ = 'courses'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(40), nullable=False)
+    lecturer_id = Column(Integer, ForeignKey('lecturers.id'))
+    year = Column(Integer, nullable=False)
+    semester = Column(String(1))
+
+    lecturer = relationship('Lecturer', back_populates='courses')
+    lessons = relationship('Lesson', back_populates='course')
+
+
+class Lesson(Base):
+    __tablename__ = 'lessons'
+    id = Column(Integer, primary_key=True)
+    course_id = Column(Integer, ForeignKey('courses.id'))
+    room_id = Column(Integer, ForeignKey('rooms.id'))
+    date = Column(DateTime, nullable=False)
+    is_test = Column(Boolean, default=False)
+
+    course = relationship('Course', back_populates='lessons')
+    room = relationship('Room', back_populates='lessons')
+
+    __table_args__ = (
+        UniqueConstraint('room_id', 'date', name='uq_room_per_date'),
+    )
